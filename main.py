@@ -1,41 +1,65 @@
 import streamlit as st
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
 
-class GradingSystem:
-    def __init__(self, rubric):
-        self.rubric = rubric
+def train_model(df):
+    # Features and target
+    X = df.drop('Grade', axis=1)
+    y = df['Grade']
 
-    def grade_submission(self, submission):
-        total_score = 0
-        max_score = 0
-        for criterion, max_points in self.rubric.items():
-            if criterion in submission:
-                student_score = submission[criterion]
-                total_score += min(student_score, max_points)
-                max_score += max_points
+    # Splitting the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        if max_score == 0:
-            return 0  # To avoid division by zero
-        percentage = (total_score / max_score) * 100
-        return percentage
+    # Train the model (Linear Regression as an example)
+    model = LinearRegression()
+    model.fit(X_train, y_train)
 
-# Example rubric (criterion: maximum points)
-assignment_rubric = {
-    'Correctness': 20,
-    'Completeness': 15,
-    'Clarity': 10,
-    'Creativity': 5
-}
+    # Predict grades
+    predictions = model.predict(X_test)
 
-grading_system = GradingSystem(assignment_rubric)
+    # Evaluate the model
+    mse = mean_squared_error(y_test, predictions)
+    r2 = r2_score(y_test, predictions)
 
-st.title('Automated Grading System')
+    return model, mse, r2
 
-st.write("Enter Student Submission Scores:")
-scores = {}
-for criterion, max_points in assignment_rubric.items():
-    score = st.slider(f"{criterion} Score (Max: {max_points})", 0, max_points, step=1)
-    scores[criterion] = score
+def main():
+    st.title('Automated Grading System')
 
-grade = grading_system.grade_submission(scores)
+    # Example dataset with student submissions and grades
+    data = {
+        'Correctness': [18, 15, 12, 20, 17],
+        'Completeness': [12, 14, 13, 15, 11],
+        'Clarity': [8, 9, 7, 10, 6],
+        'Creativity': [4, 3, 5, 2, 4],
+        'Grade': [85, 75, 70, 90, 80]  # Actual grades
+    }
 
-st.write(f"Student's Grade: {grade:.2f}%")
+    df = pd.DataFrame(data)
+
+    model, mse, r2 = train_model(df)
+
+    st.write('Mean Squared Error:', mse)
+    st.write('R-squared:', r2)
+
+    st.write('Enter Student Submission Scores:')
+    correctness = st.slider('Correctness Score', 0, 20, step=1)
+    completeness = st.slider('Completeness Score', 0, 15, step=1)
+    clarity = st.slider('Clarity Score', 0, 10, step=1)
+    creativity = st.slider('Creativity Score', 0, 5, step=1)
+
+    user_input = {
+        'Correctness': correctness,
+        'Completeness': completeness,
+        'Clarity': clarity,
+        'Creativity': creativity
+    }
+
+    grade_prediction = model.predict(pd.DataFrame([user_input]))
+    st.write(f'Predicted Grade: {grade_prediction[0]:.2f}')
+
+
+if __name__ == '__main__':
+    main()
